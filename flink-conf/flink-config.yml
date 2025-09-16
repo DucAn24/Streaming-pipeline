@@ -1,0 +1,20 @@
+# Hadoop S3A Configuration for MinIO
+fs.s3a.endpoint: http://minio:9000
+fs.s3a.access.key: minioadmin
+fs.s3a.secret.key: minioadmin
+fs.s3a.path.style.access: true
+fs.s3a.connection.ssl.enabled: false
+fs.s3a.impl: org.apache.hadoop.fs.s3a.S3AFileSystem
+fs.s3a.aws.credentials.provider: org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider
+
+# Flink Configuration
+jobmanager.rpc.address: jobmanager
+taskmanager.numberOfTaskSlots: 15
+parallelism.default: 2
+
+# Memory Configuration
+jobmanager.memory.process.size: 1600m
+taskmanager.memory.process.size: 1728m
+
+# Suppress benign shutdown exception from SafetyNetWrapperClassLoader when client exits
+classloader.check-leaked-classloader: false

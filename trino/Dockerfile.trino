@@ -1,0 +1,10 @@
+FROM trinodb/trino:414
+
+# Copy Trino configuration files
+COPY trino/etc/ /etc/trino/
+COPY trino/catalog/ /etc/trino/catalog/
+
+# Ensure proper permissions
+USER root
+RUN chown -R trino:trino /etc/trino/
+USER trino 
