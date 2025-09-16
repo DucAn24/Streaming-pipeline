@@ -72,8 +72,6 @@ def create_kafka_sources(table_env):
         )
     """)
     
-def create_joined_views(table_env):
-    
     table_env.execute_sql("""
         CREATE VIEW devices_readings_joined AS
         SELECT 
@@ -189,7 +187,7 @@ def create_elasticsearch_sinks(table_env):
         ) WITH (
             'connector' = 'elasticsearch-7',
             'hosts' = 'http://es-container:9200',
-            'index' = 'iot_devices_readings',
+            'index' = 'iot_enriched_data',
             'document-id.key-delimiter' = '$',
             'sink.bulk-flush.max-actions' = '1',
             'sink.bulk-flush.max-size' = '1mb',
@@ -200,9 +198,7 @@ def create_elasticsearch_sinks(table_env):
 
 def submit_processing_jobs(table_env):
 
-    stmt = table_env.create_statement_set()
-
-    stmt.add_insert_sql("""
+    table_env.execute_sql("""
         INSERT INTO elasticsearch_devices
         SELECT 
             _id as mongo_id,
@@ -222,7 +218,7 @@ def submit_processing_jobs(table_env):
         FROM devices_kafka_source
     """)
 
-    stmt.add_insert_sql("""
+    table_env.execute_sql("""
         INSERT INTO elasticsearch_sensor_readings
         SELECT 
             _id as mongo_id,
@@ -231,14 +227,14 @@ def submit_processing_jobs(table_env):
             sensor_value,
             unit,
             quality,
-            `timestamp`,
+            `timestamp`,    
             battery_level,
             created_at,
             updated_at
         FROM sensor_readings_kafka_source
     """)
 
-    stmt.add_insert_sql("""
+    table_env.execute_sql("""
         INSERT INTO elasticsearch_devices_readings
         SELECT 
             device_mongo_id,
@@ -266,29 +262,19 @@ def submit_processing_jobs(table_env):
         WHERE reading_id IS NOT NULL
     """)
 
-    result = stmt.execute()
-    try:
-        jc = result.get_job_client()
-        if jc:
-            print("Job submitted. JobID:", jc.get_job_id())
-    except Exception:
-        pass
-    return result
 
 def main():
     try:
         # Create table environment
         table_env = create_table_environment()
         
-        # Create Kafka source tables for IoT data với Debezium format
+        print("Creating kafka sources...")
         create_kafka_sources(table_env)
         
-        # Create joined views for IoT data analysis
-        create_joined_views(table_env)
-        
+        print("Creating elasticsearch sinks...")
         create_elasticsearch_sinks(table_env) 
 
-        # Submit IoT processing jobs 
+        print("Submitting processing jobs...")
         submit_processing_jobs(table_env)
 
     except Exception as e:
