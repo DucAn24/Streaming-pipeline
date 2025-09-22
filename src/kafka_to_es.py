@@ -161,7 +161,7 @@ def create_elasticsearch_sinks(table_env):
     """)
     
     table_env.execute_sql("""
-        CREATE TABLE elasticsearch_devices_readings (
+        CREATE TABLE elasticsearch_enrich (
             device_mongo_id STRING,
             reading_mongo_id STRING,
             device_id STRING,
@@ -235,7 +235,7 @@ def submit_processing_jobs(table_env):
     """)
 
     table_env.execute_sql("""
-        INSERT INTO elasticsearch_devices_readings
+        INSERT INTO elasticsearch_enrich
         SELECT 
             device_mongo_id,
             reading_mongo_id,
