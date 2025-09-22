@@ -70,11 +70,54 @@ services:
     networks:
       - flink-network
 
+  # PostgreSQL for Hive Metastore
+  postgres:
+    image: postgres:16
+    container_name: postgres-hive
+    environment:
+      POSTGRES_DB: hive_metastore
+      POSTGRES_USER: hive
+      POSTGRES_PASSWORD: hive123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - flink-network
+
+  # Hive Metastore Service
+  hive-metastore:
+    build:
+      context: .
+      dockerfile: hive-conf/Dockerfile.hive
+    container_name: hive-metastore
+    depends_on:
+      - postgres
+    environment:
+      SERVICE_NAME: metastore
+      DB_DRIVER: postgres
+      SERVICE_OPTS: "-Djavax.jdo.option.ConnectionDriverName=org.postgresql.Driver -Djavax.jdo.option.ConnectionURL=jdbc:postgresql://postgres:5432/hive_metastore -Djavax.jdo.option.ConnectionUserName=hive -Djavax.jdo.option.ConnectionPassword=hive123"
+      AWS_ACCESS_KEY_ID: minioadmin
+      AWS_SECRET_ACCESS_KEY: minioadmin
+      S3_ENDPOINT_URL: http://minio:9000
+      S3_PATH_STYLE_ACCESS: "true"
+    ports:
+      - "9083:9083"
+    volumes:
+      - ./hive-conf/hive-site.xml:/opt/hive/conf/hive-site.xml
+    networks:
+      - flink-network
+
   jobmanager:
     build:
       context: .
       dockerfile: flink-conf/flink.Dockerfile
     container_name: jobmanager
+    depends_on:
+      hive-metastore:
+        condition: service_started
+      minio:
+        condition: service_started
     ports:
       - "8081:8081"
     command: jobmanager
@@ -97,6 +140,10 @@ services:
     container_name: taskmanager
     depends_on:
       jobmanager:
+        condition: service_started
+      hive-metastore:
+        condition: service_started
+      minio:
         condition: service_started
     command: taskmanager
     environment:
@@ -144,14 +191,19 @@ services:
     environment:
       - CATALOG_MANAGEMENT=dynamic
     volumes:
-      - ./trino/catalog:/etc/trino/catalog 
+      - ./trino/catalog:/etc/trino/catalog
+      - trino_data:/tmp/trino
     networks:
       - flink-network
 
 volumes:
   mongodb_data:
   minio_data:
+  postgres_data:
+  warehouse_data:
+  trino_data:
 
 networks:
   flink-network:
     driver: bridge
+    name: flink-network
