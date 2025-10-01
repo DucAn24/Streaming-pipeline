@@ -35,6 +35,8 @@ This project implements a real-time data pipeline for IoT device and sensor data
 
 This project provides three main Flink streaming pipelines, each serving a core role in the IoT data platform:
 
+<img width="1055" height="454" alt="Screenshot 2025-10-01 114934" src="https://github.com/user-attachments/assets/ff03635d-2cc0-4004-8d3c-3ab657b59ac7" />
+
 ### 1. `cdc_to_kafka.py`
 Ingests change data capture (CDC) streams directly from MongoDB collections and writes them to Kafka topics in Debezium JSON format. This is typically the first stage, making MongoDB changes available in Kafka for downstream processing.
 - **MongoDB CDC Sources**: Reads from MongoDB collections (`devices`, `sensor_readings`) using the Flink MongoDB CDC connector.
