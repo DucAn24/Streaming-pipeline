@@ -2,11 +2,12 @@
 
 # Flink IoT Data Pipeline
 
-This project implements a real-time data pipeline for IoT device and sensor data using Apache Flink, Kafka, and Delta Lake (on MinIO). It is designed to ingest change data capture (CDC) streams from MongoDB (via Kafka), process and join device and sensor readings, and store both raw and aggregated data in Delta Lake tables for analytics and downstream consumption.
+This project implements a real-time data pipeline for IoT device and sensor data using Apache Flink, Kafka, Delta Lake, and Apache Iceberg (on MinIO). It is designed to ingest change data capture (CDC) streams from MongoDB (via Kafka), process and join device and sensor readings, and store both raw and aggregated data in Delta Lake or Iceberg tables for analytics and downstream consumption.
 
 ## Features
 - **Kafka CDC Sources**: Consumes CDC streams for devices and sensor readings from Kafka topics.
 - **Delta Lake Sinks**: Writes raw and processed data to Delta Lake tables stored in MinIO (S3-compatible storage).
+- **Iceberg Sinks**: Writes data to Apache Iceberg tables with upsert support for CDC-aware storage.
 - **Streaming Joins & Aggregations**: Joins device and sensor data, computes severity, and aggregates temperature readings per minute.
 - **Fault Tolerance**: Uses Flink checkpointing with externalized checkpoints to MinIO.
 
@@ -24,6 +25,7 @@ This project implements a real-time data pipeline for IoT device and sensor data
 ├── src/
 │   ├── cdc_to_kafka.py        # MongoDB CDC to Kafka 
 │   ├── kafka_to_delta.py      # Kafka CDC to Delta Lake
+│   ├── kafka_to_iceberg.py    # Kafka CDC to Apache Iceberg
 │   └── kafka_to_es.py         # Kafka CDC to Elasticsearch
 └── README.md                  
 ```
@@ -65,6 +67,27 @@ Reads CDC data from Kafka topics and writes both raw and joined/processed IoT da
 
 
 
+## Additional Pipeline: `kafka_to_iceberg.py`
+
+If you want to store IoT data in Apache Iceberg tables with **upsert support** (instead of append-only Delta Lake), you can use the `kafka_to_iceberg.py` pipeline.
+
+- **Kafka Sources**: Reads CDC data from Kafka topics (`devices-cdc`, `sensor-readings-cdc`) in Debezium JSON format.
+- **Iceberg Catalog**: Uses Hive Metastore as the catalog with MinIO (S3) as the warehouse.
+- **Upsert Support**: Unlike Delta Lake, Iceberg tables support automatic CREATE/UPDATE/DELETE operations based on CDC events.
+- **Iceberg Sinks**: Writes to partitioned Iceberg tables:
+   - `iceberg_devices` (partitioned by date, primary key: device_id)
+   - `iceberg_sensor_readings` (partitioned by date, primary key: reading_id)
+   - `iceberg_devices_readings_enriched` (joined and enriched data)
+- **Use Case**: Provides CDC-aware storage with upsert capabilities, ideal for maintaining current state while keeping historical versions.
+
+To run this pipeline:
+```bash
+make iceberg
+```
+
+**Key Difference**: While `kafka_to_delta.py` uses append-only writes, `kafka_to_iceberg.py` automatically handles upserts, updates, and deletes from CDC streams, making it suitable for maintaining current-state views.
+
+
 ## Additional Pipeline: `cdc_to_es.py`
 
 If you want to run a Flink pipeline that ingests change data capture (CDC) streams directly from MongoDB and writes them to Elasticsearch (without using Kafka or Delta Lake), you can use the optional `cdc_to_es.py` script.
@@ -97,6 +120,10 @@ make cdc-es
       ```bash
       make delta
       ```
+   - To process Kafka CDC to Apache Iceberg:
+      ```bash
+      make iceberg
+      ```
    - To process Kafka CDC to Elasticsearch:
       ```bash
       make es
@@ -104,10 +131,12 @@ make cdc-es
 
 ## Configuration
 - **Flink & Hadoop**: See `flink-conf/` for custom configuration (e.g., S3/MinIO access).
-- **Kafka**: Topics and brokers are configured in `kafka_to_delta.py`.
-- **Delta Lake**: Tables are written to MinIO buckets (see `table-path` in the script).
+- **Kafka**: Topics and brokers are configured in the pipeline scripts.
+- **Delta Lake**: Tables are written to MinIO buckets (see `table-path` in `kafka_to_delta.py`).
+- **Iceberg**: Uses Hive Metastore catalog with MinIO warehouse at `s3a://iceberg-warehouse/`.
 
 ## Notes
 - **Flink writes to Delta Lake in append-only mode:** All Delta Lake tables in this project are append-only; Flink does not support upserts or deletes to Delta tables here. Data is only added, not updated or removed.
+- **Iceberg supports full CDC operations:** The Iceberg pipeline (`kafka_to_iceberg.py`) uses format version 2 with upsert-enabled tables, automatically handling CREATE, UPDATE, and DELETE operations from CDC streams.
 
 
