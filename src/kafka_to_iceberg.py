@@ -36,16 +36,12 @@ def create_table_environment():
         )
     """)
     
-    # Do not switch to Iceberg catalog here. We'll create sources/views in the
-    # session (default catalog) and create Iceberg sinks with fully-qualified
-    # identifiers under `iceberg_catalog.iot_db`.
-    
     return table_env
 
 def create_kafka_sources(table_env):
     """Create Kafka source tables for IoT CDC data with simplified debezium-json format"""
     
-    # Devices source with debezium-json format (simplified like kafka_to_es.py)
+    # Devices source with debezium-json format 
     table_env.execute_sql("""
         CREATE TABLE devices_kafka_source (
             _id STRING,
@@ -73,7 +69,7 @@ def create_kafka_sources(table_env):
         )
     """)
     
-    # Sensor readings source with debezium-json format (simplified like kafka_to_es.py)
+    # Sensor readings source with debezium-json format 
     table_env.execute_sql("""
         CREATE TABLE sensor_readings_kafka_source (
             _id STRING,
@@ -97,7 +93,7 @@ def create_kafka_sources(table_env):
         )
     """)
     
-    # Enriched joined view (simplified like kafka_to_es.py)
+    # Enriched joined view 
     table_env.execute_sql("""
         CREATE VIEW devices_readings_joined AS
         SELECT 

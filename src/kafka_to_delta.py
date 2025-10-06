@@ -338,7 +338,7 @@ def create_delta_lake_sinks(table_env):
 
 def submit_processing_jobs(table_env):
     # Stream raw devices data into Delta (MinIO)
-    devices_raw_job = table_env.execute_sql("""
+    table_env.execute_sql("""
         INSERT INTO delta_devices_raw
         SELECT 
             mongo_id,
@@ -356,13 +356,13 @@ def submit_processing_jobs(table_env):
             created_at,
             updated_at,
             event_timestamp,
-            CAST(UNIX_MILLIS(event_timestamp) AS BIGINT) as cdc_ts,
+            CAST(EXTRACT(EPOCH FROM event_timestamp) * 1000 AS BIGINT) as cdc_ts,
             COALESCE(DATE_FORMAT(event_timestamp, 'yyyy-MM-dd'), '2025-01-01') as partition_date
         FROM devices_kafka_source
     """)
 
     # Stream raw sensor readings into Delta (MinIO)
-    sensor_readings_raw_job = table_env.execute_sql("""
+    table_env.execute_sql("""
         INSERT INTO delta_sensor_readings_raw
         SELECT 
             mongo_id,
@@ -376,12 +376,12 @@ def submit_processing_jobs(table_env):
             created_at,
             updated_at,
             event_timestamp,
-            CAST(UNIX_MILLIS(event_timestamp) AS BIGINT) as cdc_ts,
+            CAST(EXTRACT(EPOCH FROM event_timestamp) * 1000 AS BIGINT) as cdc_ts,
             COALESCE(DATE_FORMAT(event_timestamp, 'yyyy-MM-dd'), '2025-01-01') as partition_date
         FROM sensor_readings_kafka_source
     """)
 
-    devices_readings_job = table_env.execute_sql("""
+    table_env.execute_sql("""
         INSERT INTO delta_devices_readings
         SELECT 
             device_mongo_id,
@@ -398,20 +398,20 @@ def submit_processing_jobs(table_env):
             device_status,
             device_battery,
             reading_id,
-            sensor_value,
+            sensor_value,   
             unit,
             quality,
             severity,
-+            reading_timestamp,
+            reading_timestamp,
             reading_battery,
             event_timestamp,
-            CAST(UNIX_MILLIS(event_timestamp) AS BIGINT) as cdc_ts,
+            CAST(EXTRACT(EPOCH FROM event_timestamp) * 1000 AS BIGINT) as cdc_ts,
             COALESCE(DATE_FORMAT(event_timestamp, 'yyyy-MM-dd'), '2025-01-01') as partition_date
         FROM devices_readings_joined
         WHERE reading_id IS NOT NULL
     """)
 
-    minute_readings_job = table_env.execute_sql("""
+    table_env.execute_sql("""
         INSERT INTO delta_temperature_readings_minute
         SELECT 
             window_start,
@@ -426,13 +426,11 @@ def submit_processing_jobs(table_env):
             min_temperature,
             warning_count,
             critical_count,
-            CAST(UNIX_MILLIS(window_start) AS BIGINT) as cdc_ts,
+            CAST(EXTRACT(EPOCH FROM window_start) * 1000 AS BIGINT) as cdc_ts,
             COALESCE(DATE_FORMAT(window_start, 'yyyy-MM-dd'), '2025-01-01') as partition_date
         FROM temperature_readings_per_minute
     """)
-    
 
-    return [devices_raw_job, sensor_readings_raw_job, devices_readings_job, minute_readings_job]
 
 def main():
     try:
