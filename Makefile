@@ -50,6 +50,7 @@ setup-minio:
 	@docker exec minio mc alias set myminio http://localhost:9000 minioadmin minioadmin || true
 	@docker exec minio mc mb myminio/flink-checkpoints --ignore-existing || true
 	@docker exec minio mc mb myminio/delta-lake --ignore-existing || true
+	@docker exec minio mc mb myminio/iceberg-warehouse --ignore-existing || true
 	@echo "MinIO buckets created successfully!"
 
 # List Kafka topics
@@ -63,6 +64,10 @@ cdc-kafka:
 delta:
 	@if [ ! -f src/kafka_to_delta.py ]; then echo "Error: src/kafka_to_delta.py not found."; exit 1; fi
 	docker exec -it jobmanager /opt/flink/bin/flink run -py /opt/flink/src/kafka_to_delta.py
+
+ice:
+	@if [ ! -f src/kafka_to_iceberg.py ]; then echo "Error: src/kafka_to_iceberg.py not found."; exit 1; fi
+	docker exec -it jobmanager /opt/flink/bin/flink run -py /opt/flink/src/kafka_to_iceberg.py
 
 es:
 	@if [ ! -f src/kafka_to_es.py ]; then echo "Error: src/kafka_to_es.py not found."; exit 1; fi
